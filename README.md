@@ -19,7 +19,48 @@ Ensure all dependencies are installed and configured prior to proceeding.
 
 ---
 
-## Step 1: Clone the Repository
+## Step 1: Install Python 3 (May not be needed)
+
+```bash
+sudo dnf update -y
+sudo dnf install python3
+```
+
+---
+
+## Step 2: Create a Python Virtual Environment
+
+Set up a Python virtual environment for running Ansible:
+
+### Create `requirements.txt`
+
+Create `~/venv/ansible/requirements.txt` with the following content:
+
+```
+autopep8
+ansible-core
+ansible-builder
+ansible-lint
+ansible-navigator
+flake8
+yamllint
+pytest
+pytest-xdist
+```
+
+### Create and Activate the Virtual Environment
+
+Run the following commands:
+
+```bash
+python3 -m venv ~/venv/ansible
+source ~/venv/ansible/bin/activate
+python3 -m pip install -r ~/venv/ansible/requirements.txt
+```
+
+---
+
+## Step 3: Clone the Repository
 
 Clone the GitHub Gist to your local system:
 
@@ -32,45 +73,37 @@ This repository contains all necessary configuration files.
 
 ---
 
-## Step 2: Review Configuration Files
+## Step 4: Create a Working Directory
 
-Examine the following files in the repository:
+Create a working directory for your custom EE. If using a Git repository, add the `context` folder to your `.gitignore` file.
 
-1. **`execution-environment.yml`**: Specifies the base image and required dependencies for the EE.
-2. **`requirements.yml`**: Lists Ansible collections to be included.
-3. **`bindep.txt`**: Defines system-level dependencies.
-4. **`Dockerfile`** (optional): Provides advanced configurations for the image.
+Add the following files, included in the Gist, to the working directory:
 
-Modify these files as needed to suit your environment's requirements.
+- `execution-environment.yml`
+- `requirements.txt`
+- `requirements.yml`
 
 ---
 
-## Step 3: Build the Execution Environment
+## Step 5: Build the Execution Environment
 
 Use the `ansible-builder` tool to build the EE image:
 
+### With Podman
+
 ```bash
 ansible-builder build -f execution-environment.yml -t custom-ee:latest
-```
-
-**Arguments**:
-- `-f`: Path to the `execution-environment.yml` file.
-- `-t`: Tag for the resulting image.
-
-Verify the build by listing container images:
-
-```bash
-podman images  # or docker images
+podman images
 ```
 
 ---
 
-## Step 4: Test the Execution Environment
+## Step 6: Test the Execution Environment
 
 Launch a container from the custom EE image to test its configuration:
 
 ```bash
-podman run -it custom-ee:latest bash  # or docker run -it custom-ee:latest bash
+podman run -it custom-ee:latest bash
 ```
 
 Inside the container, confirm the presence of installed Ansible collections:
@@ -81,33 +114,31 @@ ansible-galaxy collection list
 
 ---
 
-## Step 5: Use the Custom EE in AWX or Automation Controller
-
-To make the custom EE accessible in AWX or Automation Controller, push it to your local environment:
+## Step 7: Push the Image to a Container Registry
 
 ### Log in to the Container Registry
 
-Log in to your local container registry:
+Log in to your container registry:
 
 ```bash
-podman login <registry>
+podman login https://<container registry>/  # For Podman
 ```
 
-Enter your credentials when prompted.
+### Push the Image
 
-### Tag and Push the Image
-
-Tag the custom EE image with the local registry URL and push it:
+#### With Podman
 
 ```bash
-podman tag custom-ee:<registry>/custom-ee:latest
-podman push <registry>/custom-ee:latest
+podman tag custom-ee:latest <container registry>/custom-ee:latest
+podman push <container registry>/custom-ee:latest
 ```
 
-### Configure in AWX/Automation Controller
+---
+
+## Step 8: Configure in AWX or Automation Controller
 
 1. Navigate to the **Execution Environments** section.
-2. Create a new EE and specify the image URL: `<registry>/custom-ee:latest`.
+2. Create a new EE and specify the image URL: `<container registry>/custom-ee:latest` (or your Docker registry URL).
 3. Test the EE by running a job template.
 
 ---
