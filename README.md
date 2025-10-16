@@ -30,7 +30,7 @@ Once built and tested locally, tag and push the image to your container registry
 ### (Optional) Developer Virtualenv
 
 ```bash
-python3 -m venv ~/venv/ansible
+python3.11 -m venv ~/venv/ansible
 source ~/venv/ansible/bin/activate
 python3 -m pip install --upgrade pip
 pip install ansible-builder ansible-navigator ansible-lint
@@ -50,11 +50,11 @@ version: 3
 
 images:
   base_image:
-    name: quay.io/centos/centos:stream9   # Base OS image (change if you need RHEL UBI, etc.)
+    name: quay.io/centos/centos:stream9   # Base OS image (change if you need RHEL UBI, etc. Recommend to keep the same or use redhat official images)
 
 dependencies:
   ansible_core:
-    package_pip: ansible-core>=2.15.8     # Pin for reproducibility
+    package_pip: ansible-core>=2.15.8     # Pin for reproducibility -- Ansible version here
   ansible_runner:
     package_pip: ansible-runner
   galaxy: requirements.yml                 # Where Ansible collections are listed
@@ -143,7 +143,14 @@ collections:
 From the repository root (where `execution-environment.yml` lives):
 
 ```bash
+# This step could take about 15 minutes try verbose mode to be safe!
 ansible-builder build -f execution-environment.yml -t custom-ee:latest
+# For Podman users, this builds a local image "localhost/custom-ee:latest"
+```
+
+```bash
+# For verbosity
+ansible-builder build -f -vvv execution-environment.yml -t custom-ee:latest
 # For Podman users, this builds a local image "localhost/custom-ee:latest"
 ```
 
@@ -152,7 +159,7 @@ List images:
 podman images   # or: docker images
 ```
 
-Run a test shell:
+Run a test shell (this will be inside the container we created:
 ```bash
 podman run -it --rm custom-ee:latest bash
 ansible --version
