@@ -1,0 +1,12 @@
+collections:
+  - name: ansible.netcommon
+  - name: ansible.utils
+  - name: ansible.windows
+  - name: community.crypto
+  - name: community.dns
+  - name: community.docker
+  - name: community.general
+  - name: community.grafana
+  - name: community.network
+  - name: community.windows
+  - name: microsoft.ad

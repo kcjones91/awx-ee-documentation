@@ -1,164 +1,247 @@
 # Process Documentation for Creating a Custom Execution Environment (EE)
 
+This repository provides a complete, GitHub‑ready guide for building a **custom Ansible Execution Environment (EE)** with **ansible-builder**. It includes example config files and explains exactly what to edit for your use case.
+
+---
+
 ## Overview
 
-This document provides a comprehensive guide for creating a custom Execution Environment (EE) using `ansible-builder`. Follow these steps to streamline your workflow and ensure a successful build.
+You will use three files to define your EE:
+
+- **`execution-environment.yml`** – the main build definition for `ansible-builder` (base image, build steps, and where to find dependency lists).
+- **`requirements.txt`** – Python packages to install into the EE image.
+- **`requirements.yml`** – Ansible Galaxy collections to pre-install into the EE image.
+
+Once built and tested locally, tag and push the image to your container registry and reference it in **AWX / Automation Controller** under **Execution Environments**.
 
 ---
 
 ## Prerequisites
 
-- **System Requirements**:
-  - Python installed.
-  - `ansible-builder` installed.
-  - A container runtime such as Docker or Podman.
-- **Resources**:
-  - Access to YAML files from the Gist repository.
+- **System**
+  - RHEL 9 / CentOS Stream 9 host (or compatible) with a container runtime: **Podman** (recommended) or Docker.
+  - Python 3.
+- **Tools**
+  - `ansible-builder` (installed in a virtualenv or system-wide).
+- **Access**
+  - A container registry where you can push images (e.g., Quay, GHCR, ECR).
+  - Network access to pull base images and collections.
 
-Ensure all dependencies are installed and configured prior to proceeding.
-
----
-
-## Step 1: Install Python 3 (May not be needed)
-
-```bash
-sudo dnf update -y
-sudo dnf install python3
-```
-
----
-
-## Step 2: Create a Python Virtual Environment
-
-Set up a Python virtual environment for running Ansible:
-
-### Create `requirements.txt`
-
-Create `~/venv/ansible/requirements.txt` with the following content:
-
-```
-autopep8
-ansible-core
-ansible-builder
-ansible-lint
-ansible-navigator
-flake8
-yamllint
-pytest
-pytest-xdist
-```
-
-### Create and Activate the Virtual Environment
-
-Run the following commands:
+### (Optional) Developer Virtualenv
 
 ```bash
 python3 -m venv ~/venv/ansible
 source ~/venv/ansible/bin/activate
-python3 -m pip install -r ~/venv/ansible/requirements.txt
+python3 -m pip install --upgrade pip
+pip install ansible-builder ansible-navigator ansible-lint
 ```
 
 ---
 
-## Step 3: Clone the Repository
+## Understanding the Files
 
-Clone the GitHub Gist to your local system:
+### 🧩 `execution-environment.yml` (main build file)
 
-```bash
-git clone https://gist.github.com/CaptainStealthy/6c54a5ed3ba66e9d7ee87481e4e178c2
-cd 6c54a5ed3ba66e9d7ee87481e4e178c2
+This file instructs `ansible-builder` how to assemble the image. Below is the example you provided (trimmed for focus) with notes:
+
+```yaml
+---
+version: 3
+
+images:
+  base_image:
+    name: quay.io/centos/centos:stream9   # Base OS image (change if you need RHEL UBI, etc.)
+
+dependencies:
+  ansible_core:
+    package_pip: ansible-core>=2.15.8     # Pin for reproducibility
+  ansible_runner:
+    package_pip: ansible-runner
+  galaxy: requirements.yml                 # Where Ansible collections are listed
+  python: requirements.txt                 # Where Python packages are listed
+
+additional_build_steps:
+  append_base:
+    - RUN yum upgrade -y
+    - RUN yum install -y python3 python3-pip python3-devel gcc epel-release
+    - RUN yum install -y krb5-devel krb5-libs krb5-workstation
+    - RUN python3 -m pip install --upgrade --force pip
+    - RUN pip3 install pypsrp[kerberos]
+    - RUN pip3 install pyVim PyVmomi
+    - COPY --from=quay.io/project-receptor/receptor:latest /usr/bin/receptor /usr/bin/receptor
+    - RUN mkdir -p /var/run/receptor
 ```
 
-This repository contains all necessary configuration files.
+**What to customize:**
+- **Base image**: keep `centos:stream9` or switch to an approved enterprise base (e.g., UBI 9).
+- **Pinned versions**: consider pinning `ansible-core` to an exact version for reproducible builds.
+- **System packages**: add/remove `yum` packages your playbooks need (e.g., `git`, `jq`, `openssl`).
+- **Receptor**: the `COPY --from=... receptor` step brings the receptor binary into the EE (useful for AAP/mesh). Keep or remove based on your needs.
+
+> Tip: Avoid putting secrets here—this file is committed to your repo.
 
 ---
 
-## Step 4: Create a Working Directory
+### 🐍 `requirements.txt` (Python dependencies)
 
-Create a working directory for your custom EE. If using a Git repository, add the `context` folder to your `.gitignore` file.
+Your example:
+```text
+dnspython
+pykerberos
+pywinrm
+awxkit==21.6.0
+urllib3
+python-tss-sdk
+```
 
-Add the following files, included in the Gist, to the working directory:
-
-- `execution-environment.yml`
-- `requirements.txt`
-- `requirements.yml`
+**Customize tips:**
+- Add any **Python modules** your roles/playbooks or custom scripts import.
+- Prefer **pinned versions** in production, e.g., `urllib3==1.26.18`.
+- Do **not** add `ansible`/`ansible-core` here (handled by `execution-environment.yml`).
 
 ---
 
-## Step 5: Build the Execution Environment
+### 🌌 `requirements.yml` (Ansible Galaxy collections)
 
-Use the `ansible-builder` tool to build the EE image:
+Your example:
+```yaml
+collections:
+  - name: ansible.netcommon
+  - name: ansible.utils
+  - name: ansible.windows
+  - name: community.crypto
+  - name: community.dns
+  - name: community.docker
+  - name: community.general
+  - name: community.grafana
+  - name: community.network
+  - name: community.windows
+  - name: microsoft.ad
+```
 
-### With Podman
+**Customize tips:**
+- Remove collections you don’t use to **reduce image size**.
+- Add private/enterprise sources by specifying `source:` (e.g., private Automation Hub).
+- Ensure version compatibility with your `ansible-core` pin.
+
+Example with versions and a private source:
+```yaml
+collections:
+  - name: ansible.utils
+    version: 4.1.0
+  - name: community.general
+    version: 8.6.2
+  - name: myco.platform
+    source: https://automation-hub.myco.local/api/galaxy/content/published/
+    version: '>=1.2.0,<2.0.0'
+```
+
+---
+
+## Build the Execution Environment
+
+From the repository root (where `execution-environment.yml` lives):
 
 ```bash
 ansible-builder build -f execution-environment.yml -t custom-ee:latest
-podman images
+# For Podman users, this builds a local image "localhost/custom-ee:latest"
 ```
 
----
-
-## Step 6: Test the Execution Environment
-
-Launch a container from the custom EE image to test its configuration:
-
+List images:
 ```bash
-podman run -it custom-ee:latest bash
+podman images   # or: docker images
 ```
 
-Inside the container, confirm the presence of installed Ansible collections:
-
+Run a test shell:
 ```bash
+podman run -it --rm custom-ee:latest bash
+ansible --version
 ansible-galaxy collection list
+python3 -c "import pywinrm, dnspython, urllib3; print('ok')"
 ```
 
 ---
 
-## Step 7: Push the Image to a Container Registry
+## Push to a Container Registry
 
-### Log in to the Container Registry
-
-Log in to your container registry:
+Log in and push (Podman example):
 
 ```bash
-podman login https://<container registry>/  # For Podman
+podman login <REGISTRY>                 # e.g., quay.io or ghcr.io
+podman tag custom-ee:latest <REGISTRY>/<NAMESPACE>/custom-ee:latest
+podman push <REGISTRY>/<NAMESPACE>/custom-ee:latest
 ```
 
-### Push the Image
+> For GHCR: `REGISTRY=ghcr.io` and `NAMESPACE=<your_github_username_or_org>`.
 
-#### With Podman
+---
+
+## Use in AWX / Automation Controller
+
+1. Go to **Administration → Execution Environments**.
+2. Click **Add**.
+3. Set **Image** to the pushed URL, e.g.:  
+   `quay.io/myco/custom-ee:latest` or `ghcr.io/myuser/custom-ee:latest`.
+4. (Optional) Set **Pull** to “Always” during testing.
+5. Save and run a quick job template to validate it.
+
+---
+
+## Security & Reproducibility
+
+- **Pin versions** (collections and Python modules) to prevent surprise upgrades.
+- Avoid committing secrets; prefer **private hubs/registries** and CI secrets.
+- Consider **multi-stage** builds or private bases if you need internal CA certs or tools.
+- Scan images (e.g., Trivy, Grype) and keep a changelog of base and dependency updates.
+
+---
+
+## Troubleshooting
+
+- **SSL or Kerberos errors**: ensure `krb5-*` libs exist and `/etc/krb5.conf` is correct at runtime (mount if needed).
+- **Missing modules**: rebuild after adding to `requirements.txt` or `requirements.yml`.
+- **Large images**: remove unused collections; consolidate `yum install` lines; pin versions.
+- **Private Hub auth**: configure `ansible-galaxy.yml` or use `ansible-navigator` config to point to your Automation Hub with credentials.
+
+---
+
+## Quick Commands (copy/paste)
 
 ```bash
-podman tag custom-ee:latest <container registry>/custom-ee:latest
-podman push <container registry>/custom-ee:latest
+# Build
+ansible-builder build -f execution-environment.yml -t custom-ee:latest
+
+# Test
+podman run -it --rm custom-ee:latest bash
+
+# Tag & Push
+podman tag custom-ee:latest <REGISTRY>/<NAMESPACE>/custom-ee:latest
+podman push <REGISTRY>/<NAMESPACE>/custom-ee:latest
 ```
 
 ---
 
-## Step 8: Configure in AWX or Automation Controller
+## Suggested .gitignore
 
-1. Navigate to the **Execution Environments** section.
-2. Create a new EE and specify the image URL: `<container registry>/custom-ee:latest` (or your Docker registry URL).
-3. Test the EE by running a job template.
-
----
-
-## Cleanup
-
-Remove the local image to free up space:
-
-```bash
-podman rmi custom-ee:latest  # or docker rmi custom-ee:latest
-```
-
-Delete any temporary build artifacts:
-
-```bash
-rm -rf context/  # or specific build directories
+```gitignore
+# ansible-builder build context
+context/
+# Python venvs
+.venv/
+venv/
+# editor/OS files
+.DS_Store
+*.swp
 ```
 
 ---
 
-## Final Notes
+### Credits
 
-This documentation ensures a smooth process for creating, testing, and deploying a custom Execution Environment. Tailor the steps and files to meet your specific needs and environment.
+This documentation is tailored to the example configs you provided for:
+- Kerberos/WinRM (pywinrm, pypsrp[kerberos], krb5 libs)
+- VMware SDKs (PyVmomi / pyVim)
+- AAP receptor binary inclusion
+
+Tweak to fit your organization’s standards and security requirements.
+
