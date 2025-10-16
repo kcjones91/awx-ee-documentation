@@ -18,6 +18,8 @@ Once built and tested locally, tag and push the image to your container registry
 
 ## Prerequisites
 
+- **This repo**
+  - Make sure to clone this repo.
 - **System**
   - RHEL 9 / CentOS Stream 9 host (or compatible) with a container runtime: **Podman** (recommended) or Docker.
   - Python 3.
@@ -26,8 +28,9 @@ Once built and tested locally, tag and push the image to your container registry
 - **Access**
   - A container registry where you can push images (e.g., Quay, GHCR, ECR).
   - Network access to pull base images and collections.
+    
 
-### (Optional) Developer Virtualenv
+### Create a virtual enviornment
 
 ```bash
 python3.11 -m venv ~/venv/ansible
