@@ -4,3 +4,5 @@ pywinrm
 awxkit==21.6.0
 urllib3
 python-tss-sdk
+pypsrp[kerberos]
+vcf-sdk

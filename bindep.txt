@@ -1,0 +1,25 @@
+# Kerberos-related system deps for RHEL/UBI
+
+# Kerberos bits
+krb5-devel          [platform:rpm]
+krb5-libs           [platform:rpm]
+krb5-workstation    [platform:rpm]
+
+# Build tooling for Python wheels and C extensions
+python3-devel       [platform:rpm]
+gcc                 [platform:rpm]
+
+python3             [platform:rpm]
+python3-pip         [platform:rpm]
+python3-gssapi      [platform:rpm]
+sssd                [platform:rpm]
+sssd-tools          [platform:rpm]
+oddjob              [platform:rpm]
+oddjob-mkhomedir    [platform:rpm]
+
+
+# Testing Kerberos
+iputils         [platform:rpm]
+bind-utils      [platform:rpm]
+net-tools           [platform:rpm]
+procps-ng           [platform:rpm]
