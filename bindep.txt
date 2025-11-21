@@ -9,6 +9,7 @@ krb5-workstation    [platform:rpm]
 python3-devel       [platform:rpm]
 gcc                 [platform:rpm]
 
+# Additional binary support
 python3             [platform:rpm]
 python3-pip         [platform:rpm]
 python3-gssapi      [platform:rpm]
@@ -18,8 +19,8 @@ oddjob              [platform:rpm]
 oddjob-mkhomedir    [platform:rpm]
 
 
-# Testing Kerberos
-iputils         [platform:rpm]
-bind-utils      [platform:rpm]
+# Testing Kerberos - optional only for debugging
+iputils             [platform:rpm]
+bind-utils          [platform:rpm]
 net-tools           [platform:rpm]
 procps-ng           [platform:rpm]

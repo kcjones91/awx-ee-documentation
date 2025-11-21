@@ -164,7 +164,7 @@ ansible-builder build -f execution-environment.yml -t custom-ee:latest
 
 ```bash
 # For verbosity
-ansible-builder build -f -vvv execution-environment.yml -t custom-ee:latest
+ansible-builder build -vvv -f  execution-environment.yml -t custom-ee:latest
 # For Podman users, this builds a local image "localhost/custom-ee:latest"
 ```
 
@@ -240,6 +240,78 @@ podman tag custom-ee:latest <REGISTRY>/<NAMESPACE>/custom-ee:latest
 podman push <REGISTRY>/<NAMESPACE>/custom-ee:latest
 ```
 
+
+## Quick Kerberos auth testing
+
+### Verify Kerberos Configuration in the EE
+
+Inside the EE container, check the Kerberos configuration:
+
+```bash
+cat /etc/krb5.conf
+```
+
+Confirm that:
+
+- `default_realm` is set to `EXAMPLE.COM` (or your test realm).
+- The `EXAMPLE.COM` realm is configured with the correct KDC and admin server (e.g. `krb5-kdc-server-example-com.example.com`).
+
+If this file matches your test environment, you are ready to authenticate.
+
+---
+
+### Authenticate with Kerberos (`kinit`)
+
+Use one of the test principals created by the `criteo/kerberos-docker` setup. For example:
+
+```bash
+kinit bob@EXAMPLE.COM
+```
+
+When prompted for the password, enter:
+
+```text
+bob
+```
+
+For detailed debug output (optional but useful while testing):
+
+```bash
+KRB5_TRACE=/dev/stdout kinit bob@EXAMPLE.COM
+```
+
+If authentication is successful, `kinit` will complete without error.
+
+---
+
+#### Verify the Kerberos Ticket Cache
+
+After running `kinit`, check the ticket cache:
+
+```bash
+klist
+```
+
+Expected output (values and times will vary):
+
+```text
+Ticket cache: FILE:/tmp/krb5cc_1000
+Default principal: bob@EXAMPLE.COM
+
+Valid starting     Expires            Service principal
+...                ...                krbtgt/EXAMPLE.COM@EXAMPLE.COM
+```
+
+This confirms that:
+
+- The EE successfully contacted the KDC.
+- The credentials for `bob@EXAMPLE.COM` were accepted.
+- A valid Ticket-Granting Ticket (TGT) was stored in the cache.
+
+At this point, the EE is fully Kerberos-enabled and ready to be used in AWX / AAP for Kerberos-based automation (WinRM over Kerberos, GSSAPI SSH, or other Kerberos-aware workflows).
+
+---
+
 ---
 
 ## Suggested .gitignore
@@ -256,6 +328,12 @@ venv/
 ```
 
 ---
+
+
+
+
+
+
 
 ### Credits
 
