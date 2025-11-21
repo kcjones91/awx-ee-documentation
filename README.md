@@ -29,6 +29,16 @@ Once built and tested locally, tag and push the image to your container registry
   - A container registry where you can push images (e.g., Quay, GHCR, ECR).
   - Network access to pull base images and collections.
     
+### Login into container registry
+
+```bash
+docker login <registryUrl>
+```
+
+```bash
+podman login <registryUrl>
+```
+
 
 ### Create a virtual enviornment
 
@@ -71,7 +81,7 @@ additional_build_steps:
     - RUN python3 -m pip install --upgrade --force pip
     - RUN pip3 install pypsrp[kerberos]
     - RUN pip3 install pyVim PyVmomi
-    - COPY --from=quay.io/project-receptor/receptor:latest /usr/bin/receptor /usr/bin/receptor
+    - COPY --from=quay.io/ansible/receptor:latest /usr/bin/receptor /usr/bin/receptor
     - RUN mkdir -p /var/run/receptor
 ```
 
@@ -86,6 +96,7 @@ additional_build_steps:
 ---
 
 ### 🐍 `requirements.txt` (Python dependencies)
+#### Optional step add the libraries needed for your project
 
 Your example:
 ```text
@@ -105,7 +116,7 @@ python-tss-sdk
 ---
 
 ### 🌌 `requirements.yml` (Ansible Galaxy collections)
-
+#### Optional step add the collections needed for your project
 Your example:
 ```yaml
 collections:

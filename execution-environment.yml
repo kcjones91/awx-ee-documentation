@@ -12,10 +12,10 @@ dependencies:
   python: requirements.txt
   system: bindep.txt
 additional_build_files:
-  - src: krb5.conf
+  - src: krb5-config/krb5.conf
     dest: configs
   # Additional step for certificate addition
-  # - src: certs*.crt
+  # - src: certs/certs*.crt
   #   dest: configs
 additional_build_steps:
   append_base:
@@ -23,8 +23,8 @@ additional_build_steps:
     - RUN python3 -m pip install --upgrade --force pip
     - COPY --from=quay.io/ansible/receptor:latest /usr/bin/receptor /usr/bin/receptor
     - RUN mkdir -p /var/run/receptor
+  append_final:
+    - COPY _build/configs/krb5.conf /etc/krb5.conf
     # # copy the hub CA certificate and update the trust store
     # - COPY _build/configs/hub-ca.crt /etc/pki/ca-trust/source/anchors
     # - RUN update-ca-trust
-  append_final:
-    - COPY _build/configs/krb5.conf /etc/krb5.conf
